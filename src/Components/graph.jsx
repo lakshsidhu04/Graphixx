@@ -12,6 +12,17 @@ const GraphComponent = () => {
         { data: { id: 'AC', source: 'A', target: 'C', label: '' } },
     ];
 
+    // Load from localStorage or fall back
+    const [elements, setElements] = useState(() => {
+        const saved = window.localStorage.getItem('graphElements');
+        return saved ? JSON.parse(saved) : defaultGraph;
+    });
+
+    // Persist whenever elements change
+    useEffect(() => {
+        window.localStorage.setItem('graphElements', JSON.stringify(elements));
+    }, [elements]);
+
     const stylesheet = [
         {
             selector: 'node',
@@ -44,12 +55,13 @@ const GraphComponent = () => {
 
     const layout = { name: 'cose', animate: true };
 
+    // Fit viewport on ready
     useEffect(() => {
         const cy = cyRef.current;
         if (cy) cy.ready(() => cy.fit());
     }, []);
 
-    // formType: 'node' | 'edge' | null
+    // Form state
     const [formType, setFormType] = useState(null);
     const [formData, setFormData] = useState({});
 
@@ -57,37 +69,37 @@ const GraphComponent = () => {
         setFormType('node');
         setFormData({ id: '', label: '' });
     };
-
     const openEdgeForm = () => {
         setFormType('edge');
         setFormData({ source: '', target: '', label: '' });
     };
-
-    const handleChange = (e) => {
+    const handleChange = e => {
         setFormData(d => ({ ...d, [e.target.name]: e.target.value }));
     };
+    const handleCancel = () => {
+        setFormType(null);
+    };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = e => {
         e.preventDefault();
-        const cy = cyRef.current;
-        if (!cy) return;
         if (formType === 'node') {
             const { id, label } = formData;
-            if (id && cy.$(`#${id}`).empty()) {
-                cy.add({ group: 'nodes', data: { id, label: label || id } });
+            if (!elements.find(el => el.data.id === id)) {
+                setElements(es => [
+                    ...es,
+                    { data: { id, label: label || id } },
+                ]);
+            } else {
+                alert(`Node "${id}" already exists.`);
             }
         } else if (formType === 'edge') {
             const { source, target, label } = formData;
             const edgeId = `${source}-${target}-${Date.now()}`;
-            if (source && target) {
-                cy.add({ group: 'edges', data: { id: edgeId, source, target, label } });
-            }
+            setElements(es => [
+                ...es,
+                { data: { id: edgeId, source, target, label } },
+            ]);
         }
-        cy.layout(layout).run();
-        setFormType(null);
-    };
-
-    const handleCancel = () => {
         setFormType(null);
     };
 
@@ -103,11 +115,12 @@ const GraphComponent = () => {
                     style={{
                         marginRight: '10px',
                         padding: '8px 16px',
-                        backgroundColor: '#FCA311',
-                        color: '#14213D',
+                        backgroundColor: '#000',
+                        color: '#fff',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
+                        fontSize: '20px',
                     }}
                 >
                     Add Node
@@ -116,11 +129,12 @@ const GraphComponent = () => {
                     onClick={openEdgeForm}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: '#FCA311',
-                        color: '#14213D',
+                        backgroundColor: '#000',
+                        color: '#fff',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
+                        fontSize: '20px',
                     }}
                 >
                     Add Edge
@@ -143,19 +157,17 @@ const GraphComponent = () => {
                         justifyContent: 'center',
                     }}
                 >
-                    {formType === 'node' && (
+                    {formType === 'node' ? (
                         <>
                             <input
-                                type="text"
                                 name="id"
                                 placeholder="Node ID"
                                 value={formData.id}
                                 onChange={handleChange}
-                                style={{ padding: '6px', width: '100px' }}
                                 required
+                                style={{ padding: '6px', width: '100px' }}
                             />
                             <input
-                                type="text"
                                 name="label"
                                 placeholder="Label (optional)"
                                 value={formData.label}
@@ -163,30 +175,25 @@ const GraphComponent = () => {
                                 style={{ padding: '6px', width: '150px' }}
                             />
                         </>
-                    )}
-
-                    {formType === 'edge' && (
+                    ) : (
                         <>
                             <input
-                                type="text"
                                 name="source"
                                 placeholder="Source ID"
                                 value={formData.source}
                                 onChange={handleChange}
-                                style={{ padding: '6px', width: '100px' }}
                                 required
+                                style={{ padding: '6px', width: '100px' }}
                             />
                             <input
-                                type="text"
                                 name="target"
                                 placeholder="Target ID"
                                 value={formData.target}
                                 onChange={handleChange}
-                                style={{ padding: '6px', width: '100px' }}
                                 required
+                                style={{ padding: '6px', width: '100px' }}
                             />
                             <input
-                                type="text"
                                 name="label"
                                 placeholder="Label (optional)"
                                 value={formData.label}
@@ -195,7 +202,6 @@ const GraphComponent = () => {
                             />
                         </>
                     )}
-
                     <button
                         type="submit"
                         style={{
@@ -234,24 +240,22 @@ const GraphComponent = () => {
                     margin: '0 auto 40px',
                     borderRadius: '8px',
                     border: '1px solid #ccc',
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                     position: 'relative',
                 }}
             >
                 <CytoscapeComponent
-                    elements={defaultGraph}
+                    elements={elements}
                     stylesheet={stylesheet}
                     layout={layout}
                     style={{
                         width: '100%',
                         height: '100%',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: '#fff',
                         borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                     }}
-                    cy={(cy) => {
-                        cyRef.current = cy;
-                    }}
+                    cy={cy => (cyRef.current = cy)}
                 />
 
                 <div
