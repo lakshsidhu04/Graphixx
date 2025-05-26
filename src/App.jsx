@@ -3,13 +3,23 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import GraphComponent from './Components/graph'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import Navbar from './Components/Navbar'
+import Traversal from './Components/Traversal'
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
     <>
-      <GraphComponent />
+      <Router>
+        <Navbar/>
+        <Routes>
+          <Route path="/" element={<GraphComponent />} />
+          <Route path="/traversal" element={<Traversal/>} />
+        </Routes>
+      </Router>
+    
     </>
   )
 }

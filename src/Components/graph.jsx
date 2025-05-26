@@ -12,13 +12,11 @@ const GraphComponent = () => {
         { data: { id: 'AC', source: 'A', target: 'C', label: '' } },
     ];
 
-    // Load from localStorage or fall back
     const [elements, setElements] = useState(() => {
         const saved = window.localStorage.getItem('graphElements');
         return saved ? JSON.parse(saved) : defaultGraph;
     });
 
-    // Persist whenever elements change
     useEffect(() => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
     }, [elements]);
@@ -55,13 +53,11 @@ const GraphComponent = () => {
 
     const layout = { name: 'cose', animate: true };
 
-    // Fit viewport on ready
     useEffect(() => {
         const cy = cyRef.current;
         if (cy) cy.ready(() => cy.fit());
     }, []);
 
-    // Form state
     const [formType, setFormType] = useState(null);
     const [formData, setFormData] = useState({});
 
@@ -69,95 +65,75 @@ const GraphComponent = () => {
         setFormType('node');
         setFormData({ id: '', label: '' });
     };
+
     const openEdgeForm = () => {
         setFormType('edge');
         setFormData({ source: '', target: '', label: '' });
     };
-    const handleChange = e => {
-        setFormData(d => ({ ...d, [e.target.name]: e.target.value }));
+
+    const openRemoveNodeForm = () => {
+        setFormType('removeNode');
+        setFormData({ id: '' });
     };
+
+    const openRemoveEdgeForm = () => {
+        setFormType('removeEdge');
+        setFormData({ source: '', target: '' });
+    };
+
+    const handleChange = (e) => {
+        setFormData((d) => ({ ...d, [e.target.name]: e.target.value }));
+    };
+
     const handleCancel = () => {
         setFormType(null);
     };
 
-    const handleSubmit = e => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         if (formType === 'node') {
             const { id, label } = formData;
             if (!elements.find(el => el.data.id === id)) {
-                setElements(es => [
-                    ...es,
-                    { data: { id, label: label || id } },
-                ]);
+                setElements(es => [...es, { data: { id, label: label || id } }]);
             } else {
                 alert(`Node "${id}" already exists.`);
             }
         } else if (formType === 'edge') {
             const { source, target, label } = formData;
             const edgeId = `${source}-${target}-${Date.now()}`;
-            setElements(es => [
-                ...es,
-                { data: { id: edgeId, source, target, label } },
-            ]);
+            setElements(es => [...es, { data: { id: edgeId, source, target, label } }]);
+        } else if (formType === 'removeNode') {
+            const { id } = formData;
+            setElements(es =>
+                es.filter(el =>
+                    el.data.id !== id &&
+                    el.data.source !== id &&
+                    el.data.target !== id
+                )
+            );
+        } else if (formType === 'removeEdge') {
+            const { source, target } = formData;
+            setElements(es =>
+                es.filter(el =>
+                    !(el.data.source === source && el.data.target === target)
+                )
+            );
         }
         setFormType(null);
     };
 
     return (
-        <div>
-            <h1 style={{ textAlign: 'center', color: '#14213D' }}>
-                Graph Visualization
-            </h1>
-
+        <div style={{ padding: '20px', backgroundColor: '#E5E5E5' }}>
             <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                <button
-                    onClick={openNodeForm}
-                    style={{
-                        marginRight: '10px',
-                        padding: '8px 16px',
-                        backgroundColor: '#000',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '20px',
-                    }}
-                >
-                    Add Node
-                </button>
-                <button
-                    onClick={openEdgeForm}
-                    style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#000',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '20px',
-                    }}
-                >
-                    Add Edge
-                </button>
+                <button onClick={openNodeForm} style={{ ...buttonStyle, backgroundColor: '#04e762'}}>Add Node</button>
+                <button onClick={openEdgeForm} style={{ ...buttonStyle, backgroundColor: '#04e762' }}>Add Edge</button>
+                <button onClick={openRemoveNodeForm} style={{ ...buttonStyle, backgroundColor: '#ff0022' }}>Remove Node</button>
+                <button onClick={openRemoveEdgeForm} style={{ ...buttonStyle, backgroundColor: '#ff0022' }}>Remove Edge</button>
             </div>
 
             {formType && (
-                <form
-                    onSubmit={handleSubmit}
-                    style={{
-                        width: '60%',
-                        margin: '0 auto 20px',
-                        padding: '12px',
-                        backgroundColor: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        gap: '10px',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    {formType === 'node' ? (
+                <form onSubmit={handleSubmit} style={formStyle}>
+                    {formType === 'node' && (
                         <>
                             <input
                                 name="id"
@@ -165,17 +141,19 @@ const GraphComponent = () => {
                                 value={formData.id}
                                 onChange={handleChange}
                                 required
-                                style={{ padding: '6px', width: '100px' }}
+                                style={inputStyle}
                             />
                             <input
                                 name="label"
                                 placeholder="Label (optional)"
                                 value={formData.label}
                                 onChange={handleChange}
-                                style={{ padding: '6px', width: '150px' }}
+                                style={inputStyle}
                             />
                         </>
-                    ) : (
+                    )}
+
+                    {formType === 'edge' && (
                         <>
                             <input
                                 name="source"
@@ -183,7 +161,7 @@ const GraphComponent = () => {
                                 value={formData.source}
                                 onChange={handleChange}
                                 required
-                                style={{ padding: '6px', width: '100px' }}
+                                style={inputStyle}
                             />
                             <input
                                 name="target"
@@ -191,114 +169,148 @@ const GraphComponent = () => {
                                 value={formData.target}
                                 onChange={handleChange}
                                 required
-                                style={{ padding: '6px', width: '100px' }}
+                                style={inputStyle}
                             />
                             <input
                                 name="label"
                                 placeholder="Label (optional)"
                                 value={formData.label}
                                 onChange={handleChange}
-                                style={{ padding: '6px', width: '150px' }}
+                                style={inputStyle}
                             />
                         </>
                     )}
-                    <button
-                        type="submit"
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#14213D',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        Submit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#ccc',
-                            color: '#333',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        Cancel
-                    </button>
+
+                    {formType === 'removeNode' && (
+                        <input
+                            name="id"
+                            placeholder="Node ID to Remove"
+                            value={formData.id}
+                            onChange={handleChange}
+                            required
+                            style={inputStyle}
+                        />
+                    )}
+
+                    {formType === 'removeEdge' && (
+                        <>
+                            <input
+                                name="source"
+                                placeholder="Source ID"
+                                value={formData.source}
+                                onChange={handleChange}
+                                required
+                                style={inputStyle}
+                            />
+                            <input
+                                name="target"
+                                placeholder="Target ID"
+                                value={formData.target}
+                                onChange={handleChange}
+                                required
+                                style={inputStyle}
+                            />
+                        </>
+                    )}
+
+                    <button type="submit" style={submitBtnStyle}>Submit</button>
+                    <button type="button" onClick={handleCancel} style={cancelBtnStyle}>Cancel</button>
                 </form>
             )}
 
-            <div
-                style={{
-                    width: '60%',
-                    height: '600px',
-                    backgroundColor: '#E5E5E5',
-                    margin: '0 auto 40px',
-                    borderRadius: '8px',
-                    border: '1px solid #ccc',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    position: 'relative',
-                }}
-            >
+            <div style={graphContainerStyle}>
                 <CytoscapeComponent
                     elements={elements}
                     stylesheet={stylesheet}
                     layout={layout}
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: '#fff',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    }}
-                    cy={cy => (cyRef.current = cy)}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#fff', borderRadius: '8px' }}
+                    cy={(cy) => (cyRef.current = cy)}
                 />
-
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: '20px',
-                        right: '20px',
-                        display: 'flex',
-                        gap: '10px',
-                    }}
-                >
-                    <button
-                        onClick={() => cyRef.current && cyRef.current.zoom(cyRef.current.zoom() * 1.2)}
-                        style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#FCA311',
-                            color: '#14213D',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '24px',
-                        }}
-                    >
-                        +
-                    </button>
-                    <button
-                        onClick={() => cyRef.current && cyRef.current.zoom(cyRef.current.zoom() / 1.2)}
-                        style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#FCA311',
-                            color: '#14213D',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '24px',
-                        }}
-                    >
-                        –
-                    </button>
+                <div style={zoomControlStyle}>
+                    <button onClick={() => cyRef.current.zoom(cyRef.current.zoom() * 1.2)} style={zoomBtnStyle}>+</button>
+                    <button onClick={() => cyRef.current.zoom(cyRef.current.zoom() / 1.2)} style={zoomBtnStyle}>–</button>
+                    <button onClick={() => cyRef.current.fit()} style={zoomBtnStyle}>Reset</button>
                 </div>
             </div>
         </div>
     );
+};
+
+// --- Styles ---
+const buttonStyle = {
+    marginRight: '10px',
+    padding: '8px 16px',
+    backgroundColor: '#000',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '20px',
+};
+
+const formStyle = {
+    width: '60%',
+    margin: '0 auto 20px',
+    padding: '12px',
+    backgroundColor: '#fff',
+    border: '1px solid #ccc',
+    borderRadius: '6px',
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center',
+    justifyContent: 'center',
+};
+
+const inputStyle = {
+    padding: '6px',
+    width: '150px',
+};
+
+const submitBtnStyle = {
+    padding: '8px 16px',
+    backgroundColor: '#14213D',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+};
+
+const cancelBtnStyle = {
+    padding: '8px 12px',
+    backgroundColor: '#ccc',
+    color: '#333',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+};
+
+const graphContainerStyle = {
+    width: '60%',
+    height: '600px',
+    backgroundColor: '#E5E5E5',
+    margin: '0 auto 40px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+    position: 'relative',
+};
+
+const zoomControlStyle = {
+    position: 'absolute',
+    bottom: '20px',
+    right: '20px',
+    display: 'flex',
+    gap: '10px',
+};
+
+const zoomBtnStyle = {
+    padding: '8px 12px',
+    backgroundColor: '#FCA311',
+    color: '#14213D',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '24px',
 };
 
 export default GraphComponent;
