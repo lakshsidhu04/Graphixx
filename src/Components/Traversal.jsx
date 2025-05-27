@@ -1,19 +1,22 @@
 import React, { useRef, useEffect, useState, use } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
+import cytoscape from 'cytoscape';
 import Button from 'react-bootstrap/Button';
 import { defaultGraph } from '../constants/graphConfig';
 import Legend from '../constants/Legends';
+import { zoomBtnStyle, buttonStyle } from '../constants/Styles';
 
 const Traversal = () => {
     const cyRef = useRef(null);
-    
+
     const [traversal, setTraversal] = useState(null);
     const [startNode, setStartNode] = useState(null);
+    const [topoElements, setTopoElements] = useState([]);
     const [elements, setElements] = useState(() => {
         const saved = window.localStorage.getItem('graphElements');
         return saved ? JSON.parse(saved) : defaultGraph;
     });
-    
+
     const [graphState, setGraphState] = useState(() => {
         try {
             const savedState = window.localStorage.getItem('graphState');
@@ -27,12 +30,12 @@ const Traversal = () => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
         window.localStorage.setItem('graphState', graphState);
     }, [elements, graphState]);
-    
+
 
     const toggleGraphType = () => {
         setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
     };
-    
+
     const nodeStyle = {
         selector: 'node',
         style: {
@@ -40,14 +43,14 @@ const Traversal = () => {
             'text-valign': 'center',
             'text-halign': 'center',
             'background-color': '#EF233C',
-            color: '#fff',
+            color: '#EDF2F4',
             'text-outline-width': 2,
             'text-outline-color': '#2B2D42',
             width: 50,
             height: 50,
         },
     };
-    
+
     const directedEdgeStyle = {
         selector: 'edge',
         style: {
@@ -98,9 +101,9 @@ const Traversal = () => {
             },
         }
     ];
-    
+
     const layout = { name: 'cose', animate: true };
-    
+
     useEffect(() => {
         const cy = cyRef.current;
         if (cy) cy.ready(() => cy.fit());
@@ -112,22 +115,22 @@ const Traversal = () => {
         } else if (traversal === 'BFS') {
             handleBFS();
         } else if (traversal === 'Topo') {
-            alert('Topological Sort is not implemented yet.');
+            handleTopo();
         }
     }
-    
+
     const handleDFS = async () => {
         const cy = cyRef.current;
         if (!cy || !startNode) {
             alert('Please select a start node and ensure the graph is loaded.');
             return;
         }
-        
+
         cy.nodes().removeClass('visited in-path current');
 
         const visited = new Set();
         const sleep = ms => new Promise(res => setTimeout(res, ms));
-        
+
         const getNeighbors = node => {
             if (graphState === 'Directed') {
                 return node.outgoers('edge').map(e => e.target());
@@ -139,41 +142,41 @@ const Traversal = () => {
                 });
             }
         };
-        
+
         const dfs = async node => {
             if (visited.has(node.id())) return;
             visited.add(node.id());
             node.addClass('current');
 
             await sleep(500);
-            
+
             node.removeClass('current').addClass('in-path');
-            
+
             const neighbors = getNeighbors(node);
             for (const nbr of neighbors) {
                 if (!visited.has(nbr.id())) {
                     await dfs(nbr);
                 }
             }
-            
+
             node.removeClass('in-path').addClass('visited');
             await sleep(300);
         };
-        
+
         await dfs(cy.getElementById(startNode));
         await new Promise(resolve => setTimeout(resolve, 500));
         cy.nodes('.in-path').removeClass('in-path');
         cy.nodes('.current').removeClass('current');
         cy.nodes('.visited').removeClass('visited');
     };
-    
+
     const handleBFS = async () => {
         const cy = cyRef.current;
         if (!cy || !startNode) {
             alert('Please select a start node and ensure the graph is loaded.');
             return;
         }
-        
+
         cy.nodes().removeClass('visited in-path current');
 
         const visited = new Set();
@@ -194,12 +197,12 @@ const Traversal = () => {
 
         const bfs = async (start) => {
             visited.add(start.id());
-            start.addClass('in-path'); 
+            start.addClass('in-path');
             queue.push(start);
 
             while (queue.length > 0) {
                 const node = queue.shift();
-                node.removeClass('in-path').addClass('current'); 
+                node.removeClass('in-path').addClass('current');
                 await sleep(1000);
 
                 const neighbors = getNeighbors(node);
@@ -212,17 +215,77 @@ const Traversal = () => {
                 }
 
                 await sleep(1000);
-                node.removeClass('current').addClass('visited'); 
+                node.removeClass('current').addClass('visited');
             }
         };
 
         await bfs(cy.getElementById(startNode));
-        
+
         await sleep(500);
         cy.nodes().removeClass('visited in-path current');
     };
-    
-    
+
+
+    const handleTopo = () => {
+        const cy = cyRef.current;
+        cy.nodes().removeClass('visited in-path current');
+
+        if (graphState === 'Undirected') {
+            alert("Topological sort can't be implemented on an undirected graph.");
+            return;
+        }
+
+        const visited = new Set();
+        const stack = [];
+
+        const getNeighbors = node => node.outgoers('edge').map(e => e.target());
+
+        const topoSort = (node) => {
+            if (visited.has(node.id())) return;
+            visited.add(node.id());
+
+            const neighbors = getNeighbors(node);
+            for (const nbr of neighbors) {
+                if (!visited.has(nbr.id())) {
+                    topoSort(nbr);
+                }
+            }
+
+            stack.push(node);
+        };
+
+        const nodes = cy.nodes();
+        for (const node of nodes) {
+            if (!visited.has(node.id())) {
+                topoSort(node);
+            }
+        }
+
+        const topoOrder = stack.reverse();
+
+        const elements = topoOrder.map(node => ({
+            data: { id: node.id(), label: node.id() }
+        }));
+
+        for (let i = 0; i < topoOrder.length - 1; i++) {
+            elements.push({
+                data: {
+                    id: `e${i}`,
+                    source: topoOrder[i].id(),
+                    target: topoOrder[i + 1].id()
+                }
+            });
+        }
+
+        setTopoElements(elements);
+    };
+
+    const clearTopoGraph = () => {
+        setTopoElements([]);
+    };
+
+
+
     return (
         <div style={{
             display: 'flex',
@@ -243,7 +306,7 @@ const Traversal = () => {
                 <div>
                     {
                         !traversal && (
-                            <h3 style={{ color: '#EF233C', marginBottom: '12px' }}>Graph Traversal</h3>
+                            <h3 style={{ color: '#2B2D42', marginBottom: '12px' }}>Graph Traversal</h3>
                         )
 
                     }
@@ -266,35 +329,37 @@ const Traversal = () => {
                     }
                     {traversal && (
                         <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                            <h4 style={{ color: '#EF233C' }}>{traversal} Traversal</h4>
+                            <h4 style={{ color: '#2B2D42' }}>{traversal} Traversal</h4>
                             <Button
                                 variant="outline-secondary"
-                                onClick={() => setTraversal(null)}
+                                onClick={() => { setTraversal(null); setStartNode(null); setTopoElements([]); }}
                                 style={{ marginTop: '10px' }}
                             >
                                 Reset
                             </Button>
+
                             <form action="">
-                                <div style={{ marginTop: '20px' }}>
-                                    <label htmlFor="startNode" style={{ display: 'block', marginBottom: '10px' }}>
-                                        Start Node:
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="startNode"
-                                        value={startNode || ''}
-                                        required
+                                {(traversal === 'DFS' || traversal === 'BFS') && (
+                                    <div style={{ marginTop: '20px' }}>
+                                        <label htmlFor="startNode" style={{ display: 'block', marginBottom: '10px' }}>
+                                            Start Node:
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="startNode"
+                                            value={startNode || ''}
+                                            required
+                                            onChange={(e) => setStartNode(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                border: '1px solid #ccc',
+                                            }}
+                                        />
+                                    </div>
+                                )}
 
-                                        onChange={(e) => setStartNode(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px',
-                                            borderRadius: '4px',
-
-                                            border: '1px solid #ccc',
-                                        }}
-                                    />
-                                </div>
                                 <Button
                                     variant="primary"
                                     onClick={() => handleTraversal()}
@@ -305,11 +370,77 @@ const Traversal = () => {
                             </form>
                         </div>
                     )}
+
                 </div>
 
             </div>
 
             <div style={{ width: '80%', padding: '20px' }}>
+                {topoElements.length > 0 && (
+                    <div
+                        style={{
+                            width: '100%',
+                            height: '250px',
+                            backgroundColor: '#fff',
+                            borderRadius: '8px',
+                            border: '1px solid #ccc',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                            marginBottom: '20px',
+                            position: 'relative',
+                        }}
+                    >
+                        <h4 style={{ padding: '10px 20px', color: '#2B2D42' }}>
+                            Topological Sort Result
+                            <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={clearTopoGraph}
+                                style={{ float: 'right', marginTop: '5px' }}
+                            >
+                                Remove
+                            </Button>
+                        </h4>
+                        <CytoscapeComponent
+                            elements={topoElements}
+                            style={{ width: '100%', height: '200px' }}
+                            stylesheet={[
+                                {
+                                    selector: 'node',
+                                    style: {
+                                        label: 'data(label)',
+                                        'text-valign': 'center',
+                                        'text-halign': 'center',
+                                        'background-color': '#007bff',
+                                        color: '#fff',
+                                        width: 40,
+                                        height: 40,
+                                        'font-size': 14,
+                                        'text-wrap': 'wrap',
+                                        'text-max-width': 40,
+                                    },
+                                },
+                                {
+                                    selector: 'edge',
+                                    style: {
+                                        width: 2,
+                                        'line-color': '#555',
+                                        'target-arrow-color': '#555',
+                                        'target-arrow-shape': 'triangle',
+                                        'curve-style': 'bezier',
+                                    },
+                                },
+                            ]}
+                            layout={{
+                                name: 'breadthfirst',
+                                directed: true,
+                                padding: 10,
+                                spacingFactor: 2,
+                                orientation: 'left-to-right',
+                            }}
+                        />
+                    </div>
+                )}
+
                 <div
                     style={{
                         width: '100%',
@@ -321,7 +452,7 @@ const Traversal = () => {
                         position: 'relative',
                     }}
                 >
-                    
+
                     <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
                         <Legend />
                     </div>
@@ -373,31 +504,11 @@ const Traversal = () => {
                     </button>
                 </div>
             </div>
-            
+
         </div>
     );
 };
 
-const zoomBtnStyle = {
-    padding: '8px 12px',
-    backgroundColor: '#0f4c5c',
-    color: '#EF233C',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '20px',
-    minWidth: '40px',
-};
 
-const buttonStyle = {
-    marginRight: '10px',
-    padding: '8px 16px',
-    backgroundColor: '#000',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '20px',
-};
 
 export default Traversal;

@@ -2,18 +2,14 @@ import React, { useRef, useEffect, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { defaultGraph } from '../constants/graphConfig';
 
-
 const GraphComponent = () => {
     const cyRef = useRef(null);
     
-    
     useEffect(() => {
-        // Only do this once to reset bugs from saved data
         if (!localStorage.getItem('graphElements')) {
             localStorage.setItem('graphElements', JSON.stringify(defaultGraph));
         }
     }, []);
-    
     
     const [graphState, setGraphState] = useState(() => {
         try {
@@ -33,7 +29,6 @@ const GraphComponent = () => {
     const toggleGraphType = () => {
         setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
     };
-    
     
     useEffect(() => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
@@ -379,7 +374,7 @@ const zoomControlStyle = {
 const zoomBtnStyle = {
     padding: '8px 12px',
     backgroundColor: '#0f4c5c',
-    color: '#EF233C',
+    color: '#EDF2F4',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
