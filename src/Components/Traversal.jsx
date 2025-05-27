@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, use } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import Button from 'react-bootstrap/Button';
 
@@ -11,7 +11,7 @@ const Traversal = () => {
         { data: { id: 'AB', source: 'A', target: 'B', label: '' } },
         { data: { id: 'AC', source: 'A', target: 'C', label: '' } }
     ];
-
+    
     const [traversal, setTraversal] = useState(null);
     const [startNode, setStartNode] = useState(null);
     const [elements, setElements] = useState(() => {
@@ -19,38 +19,73 @@ const Traversal = () => {
         return saved ? JSON.parse(saved) : defaultGraph;
     });
     
+    const [graphState, setGraphState] = useState(() => {
+        try {
+            const savedState = window.localStorage.getItem('graphState');
+            return savedState ? JSON.parse(savedState) : 'Directed';
+        } catch (e) {
+            return 'Directed';
+        }
+    });
+
     useEffect(() => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
-    }, [elements]);
+        window.localStorage.setItem('graphState', graphState);
+    }, [elements, graphState]);
+
+
     
+
+    const toggleGraphType = () => {
+        setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
+    };
+    
+    const nodeStyle = {
+        selector: 'node',
+        style: {
+            label: 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'background-color': '#14213D',
+            color: '#fff',
+            'text-outline-width': 2,
+            'text-outline-color': '#14213D',
+            width: 50,
+            height: 50,
+        },
+    };
+
+    const directedEdgeStyle = {
+        selector: 'edge',
+        style: {
+            label: 'data(label)',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#FCA311',
+            'line-color': '#FCA311',
+            width: 2,
+            'font-size': 10,
+            'text-rotation': 'autorotate',
+        },
+    };
+
+    const undirectedEdgeStyle = {
+        selector: 'edge',
+        style: {
+            label: 'data(label)',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'none',
+            'source-arrow-shape': 'none',
+            'line-color': '#FCA311',
+            width: 2,
+            'font-size': 10,
+            'text-rotation': 'autorotate',
+        },
+    };
+
     const stylesheet = [
-        {
-            selector: 'node',
-            style: {
-                label: 'data(label)',
-                'text-valign': 'center',
-                'text-halign': 'center',
-                'background-color': '#14213D',
-                color: '#fff',
-                'text-outline-width': 2,
-                'text-outline-color': '#14213D',
-                width: 50,
-                height: 50,
-            },
-        },
-        {
-            selector: 'edge',
-            style: {
-                label: 'data(label)',
-                'curve-style': 'bezier',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#FCA311',
-                'line-color': '#FCA311',
-                width: 2,
-                'font-size': 10,
-                'text-rotation': 'autorotate',
-            },
-        },
+        nodeStyle,
+        (graphState === 'Directed' ? directedEdgeStyle : undirectedEdgeStyle),
         {
             selector: '.current',
             style: {
@@ -72,71 +107,113 @@ const Traversal = () => {
     ];
     
     const layout = { name: 'cose', animate: true };
-    
+
     useEffect(() => {
         const cy = cyRef.current;
         if (cy) cy.ready(() => cy.fit());
     }, []);
-    
+
+
+
+    const handleDFSUsingCY = async () => {
+        const cy = cyRef.current;
+        if (!cy || !startNode) {
+            alert('Please select a start node and ensure the graph is loaded.');
+            return;
+        }
+
+        cy.nodes().removeClass('current in-path visited');
+
+        const events = [];
+        cy.elements().dfs({
+            root: `#${startNode}`,
+            directed: false,
+
+            visit: (node, edge, prev, i, depth) => {
+                events.push({ type: 'visit', node });
+            },
+
+            exit: (node, edge, prev, i, depth) => {
+                events.push({ type: 'exit', node });
+            },
+
+            order: 'pre'
+        });
+        console.log('DFS Events:', events);
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+        for (let evt of events) {
+            const n = evt.node;
+            if (evt.type === 'visit') {
+                n.addClass('current');
+                await sleep(400);
+
+                n.removeClass('current').addClass('in-path');
+                await sleep(200);
+
+            } else {
+                n.removeClass('in-path').addClass('visited');
+                await sleep(200);
+            }
+        }
+    };
+
     const handleDFS = async () => {
         const cy = cyRef.current;
         if (!cy || !startNode) {
             alert('Please select a start node and ensure the graph is loaded.');
             return;
         }
-        
-        if(!startNode){
-            alert('Please enter a start node.');
-            return;
-        }
 
-        console.log('Starting DFS from node:', startNode);
-        
-        cy.nodes().removeClass('visited');
-        cy.nodes().removeClass('in-path');
-        cy.nodes().removeClass('current');
+        cy.nodes().removeClass('visited in-path current');
 
         const visited = new Set();
-        const inPath = new Set();
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        // helper to get neighbors based on directed vs undirected
+        const getNeighbors = node => {
+            if (graphState === 'Directed') {
+                // only follow outgoing edges
+                return node.outgoers('edge').map(e => e.target());
+            } else {
+                // follow all edges, pick the other end
+                return node.connectedEdges().map(e => {
+                    const src = e.source();
+                    const tgt = e.target();
+                    return src.id() === node.id() ? tgt : src;
+                });
+            }
+        };
 
-        const dfs = async (node) => {
+        const dfs = async node => {
             if (visited.has(node.id())) return;
-            
+            visited.add(node.id());
+
+            // 1) enter = green
             node.addClass('current');
             await sleep(500);
-            node.removeClass('current');
-            node.addClass('in-path');
-            inPath.add(node.id());
-            
-            const neighbors = node.outgoers('edge').map(edge => edge.target());
 
-            console.log(neighbors)
+            // 2) on-stack = yellow
+            node.removeClass('current').addClass('in-path');
 
-            for (const neighbor of neighbors) {
-                if (!visited.has(neighbor.id())) {
-                    await dfs(neighbor);
+            // 3) recurse
+            const neighbors = getNeighbors(node);
+            for (const nbr of neighbors) {
+                if (!visited.has(nbr.id())) {
+                    await dfs(nbr);
                 }
             }
 
-            // Mark as visited (black), remove from in-path
-            inPath.delete(node.id());
-            node.removeClass('in-path');
-            node.addClass('visited');
+            // 4) exit = black
+            node.removeClass('in-path').addClass('visited');
             await sleep(300);
         };
 
-        // Start DFS
+        // kick off
         await dfs(cy.getElementById(startNode));
-        // Reset in-path nodes after traversal
-        inPath.forEach(id => cy.getElementById(id).removeClass('in-path'));
-        // Optionally, you can reset the current node class after traversal
-        cy.nodes().removeClass('current');
+        // clean up any lingering in-path
+        cy.nodes('.in-path').removeClass('in-path');
     };
-    
-    
-    
+
     return (
         <div style={{
             display: 'flex',
@@ -161,7 +238,7 @@ const Traversal = () => {
                         )
 
                     }
-                    
+
                     {
                         !traversal && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -223,12 +300,12 @@ const Traversal = () => {
                 </div>
 
             </div>
-            
+
             <div style={{ width: '80%', padding: '20px' }}>
                 <div
                     style={{
                         width: '100%',
-                        height: '93%',
+                        height: '85%',
                         backgroundColor: '#ffffff',
                         borderRadius: '8px',
                         border: '1px solid #ccc',
@@ -278,7 +355,13 @@ const Traversal = () => {
                         </button>
                     </div>
                 </div>
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                    <button onClick={toggleGraphType} style={buttonStyle}>
+                        {graphState === "Directed" ? "Switch to Undirected Graph" : "Switch to Directed Graph"}
+                    </button>
+                </div>
             </div>
+            
         </div>
     );
 };
@@ -293,6 +376,17 @@ const zoomBtnStyle = {
     cursor: 'pointer',
     fontSize: '20px',
     minWidth: '40px',
+};
+
+const buttonStyle = {
+    marginRight: '10px',
+    padding: '8px 16px',
+    backgroundColor: '#000',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '20px',
 };
 
 export default Traversal;
