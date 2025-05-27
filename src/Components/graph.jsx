@@ -35,79 +35,62 @@ const GraphComponent = () => {
     });
     
     
-    // const toggleGraphType = () => {
-    //     const newType = graphType === "Directed" ? "Undirected" : "Directed";
-    //     setGraphType(newType);
-    //     setGraphState(newType);
-        
-    //     if (newType === "Undirected") {
-    //         const newElements = [...elements];
-    //         elements.forEach(el => {
-    //             if (el.data.source && el.data.target) {
-    //                 const reverseExists = elements.some(
-    //                     e => e.data.source === el.data.target && e.data.target === el.data.source
-    //                 );
-    //                 if (!reverseExists) {
-    //                     const reverseEdge = {
-    //                         data: {
-    //                             id: `rev-${el.data.target}-${el.data.source}-${Date.now()}`,
-    //                             source: el.data.target,
-    //                             target: el.data.source,
-    //                             label: el.data.label || ''
-    //                         }
-    //                     };
-    //                     newElements.push(reverseEdge);
-    //                 }
-    //             }
-    //         });
-    //         setElements(newElements);
-    //     } else {
-    //         // Filter out reverse edges to simulate directed behavior
-    //         const filtered = elements.filter(el => {
-    //             if (el.data.source && el.data.target) {
-    //                 // Keep only one direction of each edge
-    //                 return el.data.source <= el.data.target;
-    //             }
-    //             return true;
-    //         });
-    //         setElements(filtered);
-    //     }
-    // };
+    const toggleGraphType = () => {
+        setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
+    };
     
     
     useEffect(() => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
-        window.localStorage.setItem('graphState', graphState); // use graphType not graphState
+        window.localStorage.setItem('graphState', graphState); 
     }, [elements, graphState]);
     
+    const nodeStyle = {
+        selector: 'node',
+        style: {
+            label: 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'background-color': '#14213D',
+            color: '#fff',
+            'text-outline-width': 2,
+            'text-outline-color': '#14213D',
+            width: 50,
+            height: 50,
+        },
+    };
+    
+    const directedEdgeStyle = {
+        selector: 'edge',
+        style: {
+            label: 'data(label)',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#FCA311',
+            'line-color': '#FCA311',
+            width: 2,
+            'font-size': 10,
+            'text-rotation': 'autorotate',
+        },
+    };
+    
+    const undirectedEdgeStyle = {
+        selector: 'edge',
+        style: {
+            label: 'data(label)',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'none',
+            'source-arrow-shape': 'none',
+            'line-color': '#FCA311',
+            width: 2,
+            'font-size': 10,
+            'text-rotation': 'autorotate',
+        },
+    };
+    
     const stylesheet = [
-        {
-            selector: 'node',
-            style: {
-                label: 'data(label)',
-                'text-valign': 'center',
-                'text-halign': 'center',
-                'background-color': '#14213D',
-                color: '#fff',
-                'text-outline-width': 2,
-                'text-outline-color': '#14213D',
-                width: 50,
-                height: 50,
-            },
-        },
-        {
-            selector: 'edge',
-            style: {
-                label: 'data(label)',
-                'curve-style': 'bezier',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#FCA311',
-                'line-color': '#FCA311',
-                width: 2,
-                'font-size': 10,
-                'text-rotation': 'autorotate',
-            },
-        },
+        nodeStyle,
+        graphState === 'Directed' ? directedEdgeStyle : undirectedEdgeStyle,
     ];
 
     const layout = { name: 'cose', animate: true };
@@ -322,14 +305,11 @@ const GraphComponent = () => {
                     <button onClick={() => cyRef.current.fit()} style={zoomBtnStyle}>Reset</button>
                 </div>
             </div>
-            {/* <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <div style={{ textAlign: 'center', marginTop: '20px' }}>
                 <button onClick={toggleGraphType} style={buttonStyle}>
-                    {graphType === "Directed" ? "Switch to Undirected" : "Switch to Directed"}
+                    {graphState === "Directed" ? "Switch to Undirected Graph" : "Switch to Directed Graph"}
                 </button>
-                <span style={{ fontSize: '20px', color: '#333' }}>
-                    Current Graph Type: {graphType}
-                </span>
-            </div> */}
+            </div>
         </div>
     );
 };

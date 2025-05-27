@@ -155,9 +155,12 @@ const Traversal = () => {
                 justifyContent: 'space-between',
             }}>
                 <div>
-                    <h4 style={{ color: '#14213D', marginBottom: '30px', textAlign: 'center' }}>
-                        Traversal Menu
-                    </h4>
+                    {
+                        !traversal && (
+                            <h3 style={{ color: '#14213D', marginBottom: '12px' }}>Graph Traversal</h3>
+                        )
+
+                    }
                     
                     {
                         !traversal && (
