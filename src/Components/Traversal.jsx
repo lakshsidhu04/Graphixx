@@ -1,16 +1,11 @@
 import React, { useRef, useEffect, useState, use } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import Button from 'react-bootstrap/Button';
+import { defaultGraph } from '../constants/graphConfig';
+import Legend from '../constants/Legends';
 
 const Traversal = () => {
     const cyRef = useRef(null);
-    const defaultGraph = [
-        { data: { id: 'A', label: 'A' } },
-        { data: { id: 'B', label: 'B' } },
-        { data: { id: 'C', label: 'C' } },
-        { data: { id: 'AB', source: 'A', target: 'B', label: '' } },
-        { data: { id: 'AC', source: 'A', target: 'C', label: '' } }
-    ];
     
     const [traversal, setTraversal] = useState(null);
     const [startNode, setStartNode] = useState(null);
@@ -32,8 +27,6 @@ const Traversal = () => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
         window.localStorage.setItem('graphState', graphState);
     }, [elements, graphState]);
-
-
     
 
     const toggleGraphType = () => {
@@ -46,23 +39,23 @@ const Traversal = () => {
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': '#14213D',
+            'background-color': '#EF233C',
             color: '#fff',
             'text-outline-width': 2,
-            'text-outline-color': '#14213D',
+            'text-outline-color': '#2B2D42',
             width: 50,
             height: 50,
         },
     };
-
+    
     const directedEdgeStyle = {
         selector: 'edge',
         style: {
             label: 'data(label)',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#FCA311',
-            'line-color': '#FCA311',
+            'target-arrow-color': '#0f4c5c',
+            'line-color': '#0f4c5c',
             width: 2,
             'font-size': 10,
             'text-rotation': 'autorotate',
@@ -76,7 +69,7 @@ const Traversal = () => {
             'curve-style': 'bezier',
             'target-arrow-shape': 'none',
             'source-arrow-shape': 'none',
-            'line-color': '#FCA311',
+            'line-color': '#0f4c5c',
             width: 2,
             'font-size': 10,
             'text-rotation': 'autorotate',
@@ -107,75 +100,90 @@ const Traversal = () => {
     ];
     
     const layout = { name: 'cose', animate: true };
-
+    
     useEffect(() => {
         const cy = cyRef.current;
         if (cy) cy.ready(() => cy.fit());
     }, []);
 
-
-
-    const handleDFSUsingCY = async () => {
-        const cy = cyRef.current;
-        if (!cy || !startNode) {
-            alert('Please select a start node and ensure the graph is loaded.');
-            return;
+    const handleTraversal = () => {
+        if (traversal === 'DFS') {
+            handleDFS();
+        } else if (traversal === 'BFS') {
+            handleBFS();
+        } else if (traversal === 'Topo') {
+            alert('Topological Sort is not implemented yet.');
         }
-
-        cy.nodes().removeClass('current in-path visited');
-
-        const events = [];
-        cy.elements().dfs({
-            root: `#${startNode}`,
-            directed: false,
-
-            visit: (node, edge, prev, i, depth) => {
-                events.push({ type: 'visit', node });
-            },
-
-            exit: (node, edge, prev, i, depth) => {
-                events.push({ type: 'exit', node });
-            },
-
-            order: 'pre'
-        });
-        console.log('DFS Events:', events);
-        const sleep = ms => new Promise(res => setTimeout(res, ms));
-        for (let evt of events) {
-            const n = evt.node;
-            if (evt.type === 'visit') {
-                n.addClass('current');
-                await sleep(400);
-
-                n.removeClass('current').addClass('in-path');
-                await sleep(200);
-
-            } else {
-                n.removeClass('in-path').addClass('visited');
-                await sleep(200);
-            }
-        }
-    };
-
+    }
+    
     const handleDFS = async () => {
         const cy = cyRef.current;
         if (!cy || !startNode) {
             alert('Please select a start node and ensure the graph is loaded.');
             return;
         }
-
+        
         cy.nodes().removeClass('visited in-path current');
 
         const visited = new Set();
         const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-        // helper to get neighbors based on directed vs undirected
+        
         const getNeighbors = node => {
             if (graphState === 'Directed') {
-                // only follow outgoing edges
                 return node.outgoers('edge').map(e => e.target());
             } else {
-                // follow all edges, pick the other end
+                return node.connectedEdges().map(e => {
+                    const src = e.source();
+                    const tgt = e.target();
+                    return src.id() === node.id() ? tgt : src;
+                });
+            }
+        };
+        
+        const dfs = async node => {
+            if (visited.has(node.id())) return;
+            visited.add(node.id());
+            node.addClass('current');
+
+            await sleep(500);
+            
+            node.removeClass('current').addClass('in-path');
+            
+            const neighbors = getNeighbors(node);
+            for (const nbr of neighbors) {
+                if (!visited.has(nbr.id())) {
+                    await dfs(nbr);
+                }
+            }
+            
+            node.removeClass('in-path').addClass('visited');
+            await sleep(300);
+        };
+        
+        await dfs(cy.getElementById(startNode));
+        await new Promise(resolve => setTimeout(resolve, 500));
+        cy.nodes('.in-path').removeClass('in-path');
+        cy.nodes('.current').removeClass('current');
+        cy.nodes('.visited').removeClass('visited');
+    };
+    
+    const handleBFS = async () => {
+        const cy = cyRef.current;
+        if (!cy || !startNode) {
+            alert('Please select a start node and ensure the graph is loaded.');
+            return;
+        }
+        
+        cy.nodes().removeClass('visited in-path current');
+
+        const visited = new Set();
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+        const queue = [];
+
+        const getNeighbors = node => {
+            if (graphState === 'Directed') {
+                return node.outgoers('edge').map(e => e.target());
+            } else {
                 return node.connectedEdges().map(e => {
                     const src = e.source();
                     const tgt = e.target();
@@ -184,36 +192,37 @@ const Traversal = () => {
             }
         };
 
-        const dfs = async node => {
-            if (visited.has(node.id())) return;
-            visited.add(node.id());
+        const bfs = async (start) => {
+            visited.add(start.id());
+            start.addClass('in-path'); 
+            queue.push(start);
 
-            // 1) enter = green
-            node.addClass('current');
-            await sleep(500);
+            while (queue.length > 0) {
+                const node = queue.shift();
+                node.removeClass('in-path').addClass('current'); 
+                await sleep(1000);
 
-            // 2) on-stack = yellow
-            node.removeClass('current').addClass('in-path');
-
-            // 3) recurse
-            const neighbors = getNeighbors(node);
-            for (const nbr of neighbors) {
-                if (!visited.has(nbr.id())) {
-                    await dfs(nbr);
+                const neighbors = getNeighbors(node);
+                for (const nbr of neighbors) {
+                    if (!visited.has(nbr.id())) {
+                        visited.add(nbr.id());
+                        queue.push(nbr);
+                        nbr.addClass('in-path');
+                    }
                 }
-            }
 
-            // 4) exit = black
-            node.removeClass('in-path').addClass('visited');
-            await sleep(300);
+                await sleep(1000);
+                node.removeClass('current').addClass('visited'); 
+            }
         };
 
-        // kick off
-        await dfs(cy.getElementById(startNode));
-        // clean up any lingering in-path
-        cy.nodes('.in-path').removeClass('in-path');
+        await bfs(cy.getElementById(startNode));
+        
+        await sleep(500);
+        cy.nodes().removeClass('visited in-path current');
     };
-
+    
+    
     return (
         <div style={{
             display: 'flex',
@@ -234,7 +243,7 @@ const Traversal = () => {
                 <div>
                     {
                         !traversal && (
-                            <h3 style={{ color: '#14213D', marginBottom: '12px' }}>Graph Traversal</h3>
+                            <h3 style={{ color: '#EF233C', marginBottom: '12px' }}>Graph Traversal</h3>
                         )
 
                     }
@@ -257,7 +266,7 @@ const Traversal = () => {
                     }
                     {traversal && (
                         <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                            <h4 style={{ color: '#14213D' }}>{traversal} Traversal</h4>
+                            <h4 style={{ color: '#EF233C' }}>{traversal} Traversal</h4>
                             <Button
                                 variant="outline-secondary"
                                 onClick={() => setTraversal(null)}
@@ -265,7 +274,6 @@ const Traversal = () => {
                             >
                                 Reset
                             </Button>
-                            {/* make start node compulsory field*/}
                             <form action="">
                                 <div style={{ marginTop: '20px' }}>
                                     <label htmlFor="startNode" style={{ display: 'block', marginBottom: '10px' }}>
@@ -289,7 +297,7 @@ const Traversal = () => {
                                 </div>
                                 <Button
                                     variant="primary"
-                                    onClick={() => handleDFS()}
+                                    onClick={() => handleTraversal()}
                                     style={{ marginTop: '20px' }}
                                 >
                                     Start Traversal
@@ -313,6 +321,10 @@ const Traversal = () => {
                         position: 'relative',
                     }}
                 >
+                    
+                    <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
+                        <Legend />
+                    </div>
                     <CytoscapeComponent
                         elements={elements}
                         stylesheet={stylesheet}
@@ -366,11 +378,10 @@ const Traversal = () => {
     );
 };
 
-// Reusable zoom button style
 const zoomBtnStyle = {
     padding: '8px 12px',
-    backgroundColor: '#FCA311',
-    color: '#14213D',
+    backgroundColor: '#0f4c5c',
+    color: '#EF233C',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',

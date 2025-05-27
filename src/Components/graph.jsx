@@ -1,16 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
+import { defaultGraph } from '../constants/graphConfig';
+
 
 const GraphComponent = () => {
     const cyRef = useRef(null);
     
-    const defaultGraph = [
-        { data: { id: 'A', label: 'A' } },
-        { data: { id: 'B', label: 'B' } },
-        { data: { id: 'C', label: 'C' } },
-        { data: { id: 'AB', source: 'A', target: 'B', label: ' ' } },
-        { data: { id: 'AC', source: 'A', target: 'C', label: ' ' } }
-    ];
     
     useEffect(() => {
         // Only do this once to reset bugs from saved data
@@ -51,10 +46,10 @@ const GraphComponent = () => {
             label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': '#14213D',
+            'background-color': '#EF233C',
             color: '#fff',
             'text-outline-width': 2,
-            'text-outline-color': '#14213D',
+            'text-outline-color': '#2B2D42',
             width: 50,
             height: 50,
         },
@@ -66,8 +61,8 @@ const GraphComponent = () => {
             label: 'data(label)',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#FCA311',
-            'line-color': '#FCA311',
+            'target-arrow-color': '#0f4c5c',
+            'line-color': '#0f4c5c',
             width: 2,
             'font-size': 10,
             'text-rotation': 'autorotate',
@@ -81,7 +76,7 @@ const GraphComponent = () => {
             'curve-style': 'bezier',
             'target-arrow-shape': 'none',
             'source-arrow-shape': 'none',
-            'line-color': '#FCA311',
+            'line-color': '#0f4c5c',
             width: 2,
             'font-size': 10,
             'text-rotation': 'autorotate',
@@ -346,7 +341,7 @@ const inputStyle = {
 
 const submitBtnStyle = {
     padding: '8px 16px',
-    backgroundColor: '#14213D',
+    backgroundColor: '#EF233C',
     color: '#fff',
     border: 'none',
     borderRadius: '4px',
@@ -383,8 +378,8 @@ const zoomControlStyle = {
 
 const zoomBtnStyle = {
     padding: '8px 12px',
-    backgroundColor: '#FCA311',
-    color: '#14213D',
+    backgroundColor: '#0f4c5c',
+    color: '#EF233C',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
