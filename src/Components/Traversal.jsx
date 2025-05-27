@@ -9,7 +9,7 @@ const Traversal = () => {
         { data: { id: 'B', label: 'B' } },
         { data: { id: 'C', label: 'C' } },
         { data: { id: 'AB', source: 'A', target: 'B', label: '' } },
-        { data: { id: 'AC', source: 'A', target: 'C', label: '' } },
+        { data: { id: 'AC', source: 'A', target: 'C', label: '' } }
     ];
 
     const [traversal, setTraversal] = useState(null);
