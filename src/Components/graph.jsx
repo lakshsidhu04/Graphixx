@@ -1,16 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { defaultGraph } from '../constants/graphConfig';
+import { directedEdgeStyle, undirectedEdgeStyle, nodeStyle, buttonStyle, formStyle, inputStyle, submitBtnStyle, cancelBtnStyle, graphContainerStyle, zoomControlStyle, zoomBtnStyle } from '../constants/Styles';
 
 const GraphComponent = () => {
     const cyRef = useRef(null);
-    
+
     useEffect(() => {
         if (!localStorage.getItem('graphElements')) {
             localStorage.setItem('graphElements', JSON.stringify(defaultGraph));
         }
     }, []);
-    
+
     const [graphState, setGraphState] = useState(() => {
         try {
             const savedState = window.localStorage.getItem('graphState');
@@ -24,63 +25,34 @@ const GraphComponent = () => {
         const saved = window.localStorage.getItem('graphElements');
         return saved ? JSON.parse(saved) : defaultGraph;
     });
-    
-    
+
+
     const toggleGraphType = () => {
         setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
     };
+
+    const [connectionMessage, setConnectionMessage] = useState('');
+    const [selectedNodes, setSelectedNodes] = useState([]);
+    const selectedNodesRef = useRef([]);
     
+
+
     useEffect(() => {
         window.localStorage.setItem('graphElements', JSON.stringify(elements));
-        window.localStorage.setItem('graphState', graphState); 
+        window.localStorage.setItem('graphState', graphState);
     }, [elements, graphState]);
-    
-    const nodeStyle = {
-        selector: 'node',
-        style: {
-            label: 'data(label)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'background-color': '#EF233C',
-            color: '#fff',
-            'text-outline-width': 2,
-            'text-outline-color': '#2B2D42',
-            width: 50,
-            height: 50,
-        },
-    };
-    
-    const directedEdgeStyle = {
-        selector: 'edge',
-        style: {
-            label: 'data(label)',
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#0f4c5c',
-            'line-color': '#0f4c5c',
-            width: 2,
-            'font-size': 10,
-            'text-rotation': 'autorotate',
-        },
-    };
-    
-    const undirectedEdgeStyle = {
-        selector: 'edge',
-        style: {
-            label: 'data(label)',
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'none',
-            'source-arrow-shape': 'none',
-            'line-color': '#0f4c5c',
-            width: 2,
-            'font-size': 10,
-            'text-rotation': 'autorotate',
-        },
-    };
-    
+
+
     const stylesheet = [
         nodeStyle,
         graphState === 'Directed' ? directedEdgeStyle : undirectedEdgeStyle,
+        {
+            selector: '.selected',
+            style: {
+                'border-width': 4,
+                'border-color': 'black'
+            }
+        }
     ];
 
     const layout = { name: 'cose', animate: true };
@@ -102,12 +74,12 @@ const GraphComponent = () => {
         setFormType('edge');
         setFormData({ source: '', target: '', label: '' });
     };
-    
+
     const openRemoveNodeForm = () => {
         setFormType('removeNode');
         setFormData({ id: '' });
     };
-    
+
     const openRemoveEdgeForm = () => {
         setFormType('removeEdge');
         setFormData({ source: '', target: '' });
@@ -183,12 +155,119 @@ const GraphComponent = () => {
 
         setFormType(null);
     };
-    
-    
+
+    useEffect(() => {
+        const cy = cyRef.current;
+        if (!cy) return;
+
+        cy.ready(() => {
+            cy.fit();
+
+            cy.on('tap', 'edge', (event) => {
+                const edge = event.target;
+                const currentWeight = edge.data('weight') || 1;
+
+                const newWeight = prompt(`Current weight: ${currentWeight}\nEnter new weight:`, currentWeight);
+                if (newWeight !== null && !isNaN(Number(newWeight))) {
+                    const updatedWeight = Number(newWeight);
+                    edge.data('weight', updatedWeight);
+                    edge.data('label', `${updatedWeight}`);
+
+                    // Update React state to persist the weight in localStorage
+                    setElements(prevElements =>
+                        prevElements.map(el => {
+                            if (el.data.id === edge.id()) {
+                                return {
+                                    ...el,
+                                    data: {
+                                        ...el.data,
+                                        weight: updatedWeight,
+                                        label: `${updatedWeight}`
+                                    }
+                                };
+                            }
+                            return el;
+                        })
+                    );
+                }
+            });
+
+
+
+            cy.on('tap', 'node', (event) => {
+                const node = event.target;
+                const nodeId = node.id();
+
+                const selected = selectedNodesRef.current;
+
+                // Ignore double select
+                if (selected.find(n => n.id() === nodeId)) return;
+
+                node.addClass('selected');
+
+                if (selected.length === 0) {
+                    console.log("First node:", node.id());
+                    selectedNodesRef.current = [node];
+                    setSelectedNodes([node]);
+                    setConnectionMessage(`Node "${nodeId}" selected. Click another node to connect.`);
+                } else if (selected.length === 1) {
+                    console.log("Second node selected");
+                    const source = selected[0].id();
+                    const target = nodeId;
+                    const weightInput = prompt("Enter weight for the new edge (default 1):", "1");
+                    const weight = weightInput !== null && !isNaN(Number(weightInput)) ? Number(weightInput) : 1;
+
+                    const edgeId = `e-${source}-${target}-${Date.now()}`;
+
+                    cy.add({
+                        group: 'edges',
+                        data: {
+                            id: edgeId,
+                            source,
+                            target,
+                            weight,
+                            label: `${weight}`
+                        }
+                    });
+
+                    setElements(prev => [
+                        ...prev,
+                        {
+                            data: {
+                                id: edgeId,
+                                source,
+                                target,
+                                weight,
+                                label: `${weight}`
+                            }
+                        }
+                    ]);
+
+                    cy.nodes().removeClass('selected');
+                    selectedNodesRef.current = [];
+                    setSelectedNodes([]);
+                    setConnectionMessage('Edge created! Click a node to start a new connection.');
+                }
+            });
+            
+            
+        });
+
+        return () => {
+            if (cy) {
+                cy.removeListener('tap', 'edge');
+                cy.removeListener('tap', 'node');
+            }
+        };
+    }, []);
+
+
+
+
     return (
         <div style={{ padding: '20px', backgroundColor: '#E5E5E5' }}>
             <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                <button onClick={openNodeForm} style={{ ...buttonStyle, backgroundColor: '#04e762'}}>Add Node</button>
+                <button onClick={openNodeForm} style={{ ...buttonStyle, backgroundColor: '#04e762' }}>Add Node</button>
                 <button onClick={openEdgeForm} style={{ ...buttonStyle, backgroundColor: '#04e762' }}>Add Edge</button>
                 <button onClick={openRemoveNodeForm} style={{ ...buttonStyle, backgroundColor: '#ff0022' }}>Remove Node</button>
                 <button onClick={openRemoveEdgeForm} style={{ ...buttonStyle, backgroundColor: '#ff0022' }}>Remove Edge</button>
@@ -281,6 +360,27 @@ const GraphComponent = () => {
                 </form>
             )}
 
+
+            {connectionMessage && (
+                <div style={{ textAlign: 'center', marginBottom: '10px', fontWeight: 'bold' }}>
+                    {connectionMessage}
+                    <button
+                        onClick={() => {
+                            const cy = cyRef.current;
+                            cy.nodes().removeClass('selected');
+                            setSelectedNodes([]);
+                            selectedNodesRef.current = [];
+                            setConnectionMessage('');
+                            console.log("Connection message cleared");
+                        }}
+                        style={{ marginLeft: '10px', padding: '5px 10px', background: '#ccc', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            )}
+
+
             <div style={graphContainerStyle}>
                 <CytoscapeComponent
                     elements={elements}
@@ -304,81 +404,5 @@ const GraphComponent = () => {
     );
 };
 
-// --- Styles ---
-const buttonStyle = {
-    marginRight: '10px',
-    padding: '8px 16px',
-    backgroundColor: '#000',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '20px',
-};
-
-const formStyle = {
-    width: '60%',
-    margin: '0 auto 20px',
-    padding: '12px',
-    backgroundColor: '#fff',
-    border: '1px solid #ccc',
-    borderRadius: '6px',
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    justifyContent: 'center',
-};
-
-const inputStyle = {
-    padding: '6px',
-    width: '150px',
-};
-
-const submitBtnStyle = {
-    padding: '8px 16px',
-    backgroundColor: '#EF233C',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-};
-
-const cancelBtnStyle = {
-    padding: '8px 12px',
-    backgroundColor: '#ccc',
-    color: '#333',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-};
-
-const graphContainerStyle = {
-    width: '60%',
-    height: '600px',
-    backgroundColor: '#E5E5E5',
-    margin: '0 auto 40px',
-    borderRadius: '8px',
-    border: '1px solid #ccc',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    position: 'relative',
-};
-
-const zoomControlStyle = {
-    position: 'absolute',
-    bottom: '20px',
-    right: '20px',
-    display: 'flex',
-    gap: '10px',
-};
-
-const zoomBtnStyle = {
-    padding: '8px 12px',
-    backgroundColor: '#0f4c5c',
-    color: '#EDF2F4',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '24px',
-};
 
 export default GraphComponent;

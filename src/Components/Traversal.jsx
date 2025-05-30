@@ -4,7 +4,7 @@ import cytoscape from 'cytoscape';
 import Button from 'react-bootstrap/Button';
 import { defaultGraph } from '../constants/graphConfig';
 import Legend from '../constants/Legends';
-import { zoomBtnStyle, buttonStyle } from '../constants/Styles';
+import { directedEdgeStyle,undirectedEdgeStyle,nodeStyle, zoomBtnStyle, buttonStyle } from '../constants/Styles';
 
 const Traversal = () => {
     const cyRef = useRef(null);
@@ -36,49 +36,11 @@ const Traversal = () => {
         setGraphState(type => (type === 'Directed' ? 'Undirected' : 'Directed'));
     };
 
-    const nodeStyle = {
-        selector: 'node',
-        style: {
-            label: 'data(label)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'background-color': '#EF233C',
-            color: '#EDF2F4',
-            'text-outline-width': 2,
-            'text-outline-color': '#2B2D42',
-            width: 50,
-            height: 50,
-        },
-    };
+    const [connectionMessage, setConnectionMessage] = useState('');
+        const [selectedNodes, setSelectedNodes] = useState([]);
+        const selectedNodesRef = useRef([]);
 
-    const directedEdgeStyle = {
-        selector: 'edge',
-        style: {
-            label: 'data(label)',
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#0f4c5c',
-            'line-color': '#0f4c5c',
-            width: 2,
-            'font-size': 10,
-            'text-rotation': 'autorotate',
-        },
-    };
-
-    const undirectedEdgeStyle = {
-        selector: 'edge',
-        style: {
-            label: 'data(label)',
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'none',
-            'source-arrow-shape': 'none',
-            'line-color': '#0f4c5c',
-            width: 2,
-            'font-size': 10,
-            'text-rotation': 'autorotate',
-        },
-    };
-
+    
     const stylesheet = [
         nodeStyle,
         (graphState === 'Directed' ? directedEdgeStyle : undirectedEdgeStyle),
@@ -99,15 +61,122 @@ const Traversal = () => {
             style: {
                 'background-color': 'black',
             },
+        },
+        {
+            selector: '.selected',
+            style: {
+                'border-width': 4,
+                'border-color': 'black'
+            }
         }
     ];
 
     const layout = { name: 'cose', animate: true };
 
     useEffect(() => {
-        const cy = cyRef.current;
-        if (cy) cy.ready(() => cy.fit());
-    }, []);
+            const cy = cyRef.current;
+            if (!cy) return;
+    
+            cy.ready(() => {
+                cy.fit();
+    
+                cy.on('tap', 'edge', (event) => {
+                    const edge = event.target;
+                    const currentWeight = edge.data('weight') || 1;
+    
+                    const newWeight = prompt(`Current weight: ${currentWeight}\nEnter new weight:`, currentWeight);
+                    if (newWeight !== null && !isNaN(Number(newWeight))) {
+                        const updatedWeight = Number(newWeight);
+                        edge.data('weight', updatedWeight);
+                        edge.data('label', `${updatedWeight}`);
+    
+                        // Update React state to persist the weight in localStorage
+                        setElements(prevElements =>
+                            prevElements.map(el => {
+                                if (el.data.id === edge.id()) {
+                                    return {
+                                        ...el,
+                                        data: {
+                                            ...el.data,
+                                            weight: updatedWeight,
+                                            label: `${updatedWeight}`
+                                        }
+                                    };
+                                }
+                                return el;
+                            })
+                        );
+                    }
+                });
+    
+    
+    
+                cy.on('tap', 'node', (event) => {
+                    const node = event.target;
+                    const nodeId = node.id();
+    
+                    const selected = selectedNodesRef.current;
+    
+                    // Ignore double select
+                    if (selected.find(n => n.id() === nodeId)) return;
+    
+                    node.addClass('selected');
+    
+                    if (selected.length === 0) {
+                        console.log("First node:", node.id());
+                        selectedNodesRef.current = [node];
+                        setSelectedNodes([node]);
+                        setConnectionMessage(`Node "${nodeId}" selected. Click another node to connect.`);
+                    } else if (selected.length === 1) {
+                        console.log("Second node selected");
+                        const source = selected[0].id();
+                        const target = nodeId;
+                        const weightInput = prompt("Enter weight for the new edge (default 1):", "1");
+                        const weight = weightInput !== null && !isNaN(Number(weightInput)) ? Number(weightInput) : 1;
+    
+                        const edgeId = `e-${source}-${target}-${Date.now()}`;
+    
+                        cy.add({
+                            group: 'edges',
+                            data: {
+                                id: edgeId,
+                                source,
+                                target,
+                                weight,
+                                label: `${weight}`
+                            }
+                        });
+    
+                        setElements(prev => [
+                            ...prev,
+                            {
+                                data: {
+                                    id: edgeId,
+                                    source,
+                                    target,
+                                    weight,
+                                    label: `${weight}`
+                                }
+                            }
+                        ]);
+    
+                        cy.nodes().removeClass('selected');
+                        selectedNodesRef.current = [];
+                        setSelectedNodes([]);
+                        setConnectionMessage('Edge created! Click a node to start a new connection.');
+                    }
+                });
+                
+                
+            });
+    
+            return () => {
+                if (cy) {
+                    cy.removeListener('tap', 'edge');
+                    cy.removeListener('tap', 'node');
+                }
+            };
+        }, []);
 
     const handleTraversal = () => {
         if (traversal === 'DFS') {
@@ -262,7 +331,7 @@ const Traversal = () => {
         }
 
         const topoOrder = stack.reverse();
-
+        
         const elements = topoOrder.map(node => ({
             data: { id: node.id(), label: node.id() }
         }));
@@ -440,7 +509,23 @@ const Traversal = () => {
                         />
                     </div>
                 )}
-
+                {connectionMessage && (
+                    <div style={{ textAlign: 'center', marginBottom: '10px', fontWeight: 'bold' }}>
+                        {connectionMessage}
+                        <button
+                            onClick={() => {
+                                const cy = cyRef.current;
+                                cy.nodes().removeClass('selected');
+                                selectedNodesRef.current = [];
+                                setSelectedNodes([]);
+                                setConnectionMessage('');
+                            }}
+                            style={{ marginLeft: '10px', padding: '5px 10px', background: '#ccc', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
                 <div
                     style={{
                         width: '100%',
@@ -452,7 +537,7 @@ const Traversal = () => {
                         position: 'relative',
                     }}
                 >
-
+                    
                     <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
                         <Legend />
                     </div>
