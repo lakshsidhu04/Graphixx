@@ -6,7 +6,8 @@ import GraphComponent from './Components/graph'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import Navbar from './Components/Navbar'
 import Traversal from './Components/Traversal'
-
+import Djikstra from './Components/Djikstra'
+import Bellman from './Components/Bellman'
 function App() {
   const [count, setCount] = useState(0)
 
@@ -17,6 +18,9 @@ function App() {
         <Routes>
           <Route path="/" element={<GraphComponent />} />
           <Route path="/traversal" element={<Traversal/>} />
+          <Route path="/algorithms/djikstra" element={<Djikstra />} />
+          <Route path="/algorithms/bellman" element={<Bellman />} />
+          {/* Add more routes as needed */}
         </Routes>
       </Router>
     

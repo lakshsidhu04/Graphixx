@@ -7,6 +7,8 @@ export const zoomBtnStyle = {
     cursor: 'pointer',
     fontSize: '20px',
     minWidth: '40px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease-in-out',
 };
 
 export const buttonStyle = {
@@ -18,6 +20,8 @@ export const buttonStyle = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '20px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease-in-out',
 };
 
 export const formStyle = {
@@ -45,6 +49,8 @@ export const submitBtnStyle = {
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease-in-out',
 };
 
 export const cancelBtnStyle = {
@@ -54,6 +60,8 @@ export const cancelBtnStyle = {
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease-in-out',
 };
 
 export const graphContainerStyle = {
@@ -74,6 +82,8 @@ export const zoomControlStyle = {
     right: '20px',
     display: 'flex',
     gap: '10px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease-in-out',
 };
 
 
@@ -127,5 +137,11 @@ export const undirectedEdgeStyle = {
         width: 2,
         'font-size': 10,
         'text-rotation': 'autorotate',
+        'text-background-color': '#fff',
+        'text-background-opacity': 1,
+        'text-background-shape': 'roundrectangle',
+        'text-border-color': '#ccc',
+        'text-border-width': 1,
+        'text-border-opacity': 1,
     },
 };

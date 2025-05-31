@@ -11,17 +11,17 @@ function BasicExample() {
             style={{ borderBottom: '2px solid #000000' }}
         >
             <Container>
-                <Navbar.Brand href="#home">Graphixx</Navbar.Brand>
+                <Navbar.Brand href="/">Graphixx</Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
                         <Nav.Link href="/">Home</Nav.Link>
                         <Nav.Link href="/traversal">Traversal</Nav.Link>
-                        {/* <NavDropdown title="Traversal" id="basic-nav-dropdown">
-                            <NavDropdown.Item href="/traversal/bfs">BFS</NavDropdown.Item>
-                            <NavDropdown.Item href="/traversal/dfs">DFS</NavDropdown.Item>
+                        <NavDropdown title="Algorithms" id="basic-nav-dropdown">
+                            <NavDropdown.Item href="/algorithms/djikstra">Djikstra</NavDropdown.Item>
+                            <NavDropdown.Item href="/algorithms/bellman">Bellman Ford</NavDropdown.Item>
                             <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-                        </NavDropdown> */}
+                        </NavDropdown>
                     </Nav>
                 </Navbar.Collapse>
             </Container>
