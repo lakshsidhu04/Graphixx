@@ -2,8 +2,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { defaultGraph } from '../constants/graphConfig';
 import { directedEdgeStyle, undirectedEdgeStyle, nodeStyle, buttonStyle, formStyle, inputStyle, submitBtnStyle, cancelBtnStyle, graphContainerStyle, zoomControlStyle, zoomBtnStyle } from '../constants/Styles';
-import { cySetUp } from '../constants/UtilFunctions';
-
 const GraphComponent = () => {
     const cyRef = useRef(null);
 

@@ -8,6 +8,7 @@ import Navbar from './Components/Navbar'
 import Traversal from './Components/Traversal'
 import Djikstra from './Components/Djikstra'
 import Bellman from './Components/Bellman'
+import SCC from './Components/SCC'
 function App() {
   const [count, setCount] = useState(0)
 
@@ -20,6 +21,7 @@ function App() {
           <Route path="/traversal" element={<Traversal/>} />
           <Route path="/algorithms/djikstra" element={<Djikstra />} />
           <Route path="/algorithms/bellman" element={<Bellman />} />
+          <Route path="/conn/scc" element={<SCC />} />
           {/* Add more routes as needed */}
         </Routes>
       </Router>

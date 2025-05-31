@@ -20,7 +20,10 @@ function BasicExample() {
                         <NavDropdown title="Algorithms" id="basic-nav-dropdown">
                             <NavDropdown.Item href="/algorithms/djikstra">Djikstra</NavDropdown.Item>
                             <NavDropdown.Item href="/algorithms/bellman">Bellman Ford</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
+                        </NavDropdown>
+                        <NavDropdown title="Connectivity" id="basic-nav-dropdown">
+                            <NavDropdown.Item href="/conn/scc">SCCs</NavDropdown.Item>
+                            <NavDropdown.Item href="/algorithms/bellman">Bellman Ford</NavDropdown.Item>
                         </NavDropdown>
                     </Nav>
                 </Navbar.Collapse>
